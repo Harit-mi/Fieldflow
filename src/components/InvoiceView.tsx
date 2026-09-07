@@ -1,31 +1,86 @@
 'use client'
 
 import { useState } from 'react'
-import { calculateInvoice, LineItem } from '@/utils/invoiceMath'
+import { calculateInvoice, calculateLedgerCharge, LineItem } from '@/utils/invoiceMath'
 import { CheckCircle, CreditCard, Banknote, UserPlus, ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
+import { createClient } from '@/utils/supabase/client'
+import { openDB } from 'idb'
 
-const DUMMY_LINE_ITEMS: LineItem[] = [
-  { id: '1', type: 'labor', description: 'Emergency Service Call', amountCents: 15000, quantity: 1, taxable: false },
-  { id: '2', type: 'labor', description: 'Leak Repair', amountCents: 12000, quantity: 1.5, taxable: false },
-  { id: '3', type: 'part', description: 'PVC Pipe & Fittings', amountCents: 4500, quantity: 1, taxable: true },
-]
-
-export function InvoiceView({ jobId }: { jobId: string }) {
+export function InvoiceView({ 
+  jobId, 
+  invoiceId,
+  initialLineItems 
+}: { 
+  jobId: string, 
+  invoiceId: string,
+  initialLineItems: LineItem[] 
+}) {
   const [paymentMethod, setPaymentMethod] = useState<'card' | 'cash' | 'tab' | null>(null)
   const [isPaid, setIsPaid] = useState(false)
+  const supabase = createClient()
   
   const invoice = calculateInvoice({
-    lineItems: DUMMY_LINE_ITEMS,
+    lineItems: initialLineItems,
     taxRatePercent: 8.5,
     tipCents: 0,
-    amountPaidCents: 0
+    amountPaidCents: 0 // We're calculating the full invoice first
   })
 
-  const handlePay = () => {
+  const handlePay = async () => {
     if (!paymentMethod) return
+    
+    // Determine how much is paid on site (Cash/Card) vs goes to Tab
+    const amountPaidOnSiteCents = paymentMethod === 'tab' ? 0 : invoice.totalCents
+    const ledgerChargeCents = calculateLedgerCharge(invoice.totalCents, amountPaidOnSiteCents)
+    
+    // Update local UI immediately
     setIsPaid(true)
-    // Here we would sync the payment via sync_queue
+
+    // Queue mutations in IndexedDB for offline resilience
+    const db = await openDB('fieldflow-sync', 1)
+    
+    // 1. Mark Invoice as Paid
+    await db.add('sync_queue', {
+      type: 'invoice_payment',
+      payload: { 
+        invoiceId, 
+        jobId,
+        paymentMethod,
+        ledgerChargeCents, // What we will add to the customer_ledger (if > 0)
+        status: 'Paid',
+        paidAt: new Date().toISOString()
+      },
+      created_at: Date.now()
+    })
+    
+    // Note: The actual flush logic would run via a global sync listener (e.g. in layout or JobBoard)
+    // For this MVP component, we attempt to flush it immediately:
+    if (navigator.onLine) {
+      const { data: jobInfo } = await supabase.from('jobs').select('customer_id').eq('id', jobId).single()
+      if (jobInfo) {
+        await supabase
+          .from('invoices')
+          .update({ 
+            status: 'Paid', 
+            payment_method: paymentMethod, 
+            paid_at: new Date().toISOString() 
+          })
+          .eq('id', invoiceId)
+          
+        if (ledgerChargeCents > 0) {
+          await supabase.from('customer_ledger').insert({
+            customer_id: jobInfo.customer_id,
+            delta_cents: ledgerChargeCents, // positive means they owe us
+            reason: 'Invoice payment remainder',
+            related_invoice_id: invoiceId
+          })
+        }
+        
+        // Also update the job status to Paid
+        await supabase.from('jobs').update({ status: 'Paid' }).eq('id', jobId)
+      }
+    }
   }
 
   if (isPaid) {
@@ -68,7 +123,7 @@ export function InvoiceView({ jobId }: { jobId: string }) {
       {/* Line Items */}
       <div className="p-6">
         <div className="space-y-4 mb-8">
-          {DUMMY_LINE_ITEMS.map(item => (
+          {initialLineItems.map(item => (
             <div key={item.id} className="flex justify-between items-start">
               <div>
                 <p className="font-semibold text-gray-900">{item.description}</p>

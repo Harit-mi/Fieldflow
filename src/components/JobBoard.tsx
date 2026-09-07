@@ -1,63 +1,107 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Job, JobStatus } from '@/types'
 import { MapPin, Phone, Clock, CheckCircle } from 'lucide-react'
-
-// Dummy data
-const INITIAL_JOBS: Job[] = [
-  {
-    id: '1',
-    customer: { id: 'c1', name: 'John Doe', phone: '555-0101', address: '123 Main St, Springfield', balance_cents: 0 },
-    scheduled_date: new Date().toISOString(),
-    status: 'Scheduled',
-    service_type: 'HVAC Repair',
-    notes: 'AC blowing warm air. Gate code 1234.'
-  },
-  {
-    id: '2',
-    customer: { id: 'c2', name: 'Jane Smith', phone: '555-0102', address: '456 Elm St, Springfield', balance_cents: 15000 },
-    scheduled_date: new Date(Date.now() + 7200000).toISOString(),
-    status: 'In Progress',
-    service_type: 'Plumbing Leak',
-    notes: 'Kitchen sink leaking underneath.'
-  },
-  {
-    id: '3',
-    customer: { id: 'c3', name: 'Bob Johnson', phone: '555-0103', address: '789 Oak Ave, Springfield', balance_cents: 0 },
-    scheduled_date: new Date(Date.now() + 14400000).toISOString(),
-    status: 'Scheduled',
-    service_type: 'Electrical Outlet',
-    notes: 'Install new 220V outlet in garage.',
-    invoice_amount_cents: 124000
-  },
-  {
-    id: '4',
-    customer: { id: 'c4', name: 'Alice Walker', phone: '555-0104', address: '321 Pine Rd, Springfield', balance_cents: 0 },
-    scheduled_date: new Date(Date.now() - 3600000).toISOString(),
-    status: 'Complete',
-    service_type: 'Lighting Install',
-    notes: 'Installed ceiling fan in living room.',
-    invoice_amount_cents: 25000
-  }
-]
+import { createClient } from '@/utils/supabase/client'
+import { openDB } from 'idb'
 
 const STATUS_ORDER: JobStatus[] = ['Scheduled', 'En Route', 'In Progress', 'Complete', 'Paid']
 
-export function JobBoard() {
-  const [jobs, setJobs] = useState<Job[]>(INITIAL_JOBS)
+export function JobBoard({ initialJobs }: { initialJobs: Job[] }) {
+  const [jobs, setJobs] = useState<Job[]>(initialJobs)
   const [expandedJobId, setExpandedJobId] = useState<string | null>(null)
-  
+  const [pendingSyncCount, setPendingSyncCount] = useState(0)
+  const supabase = createClient()
+
+  // Initialize IndexedDB for offline queue
+  const initDB = async () => {
+    return openDB('fieldflow-sync', 1, {
+      upgrade(db) {
+        if (!db.objectStoreNames.contains('sync_queue')) {
+          db.createObjectStore('sync_queue', { keyPath: 'id', autoIncrement: true })
+        }
+      },
+    })
+  }
+
+  // Flush queue to Supabase
+  const flushQueue = async () => {
+    if (!navigator.onLine) return
+
+    const db = await initDB()
+    const tx = db.transaction('sync_queue', 'readwrite')
+    const store = tx.objectStore('sync_queue')
+    const allPending = await store.getAll()
+    
+    setPendingSyncCount(allPending.length)
+
+    if (allPending.length === 0) return
+
+    for (const item of allPending) {
+      if (item.type === 'job_status_change') {
+        const { error } = await supabase
+          .from('jobs')
+          .update({ status: item.payload.status })
+          .eq('id', item.payload.jobId)
+
+        if (!error) {
+          // Record it in the remote sync_queue table for audit/sync history
+          await supabase.from('sync_queue').insert({
+            device_id: 'browser',
+            entity_type: 'job',
+            entity_id: item.payload.jobId,
+            payload: { status: item.payload.status },
+            synced_at: new Date().toISOString()
+          })
+          
+          await db.delete('sync_queue', item.id)
+        }
+      }
+    }
+
+    const remaining = await db.getAll('sync_queue')
+    setPendingSyncCount(remaining.length)
+  }
+
+  // Listen for online events to trigger flush
+  useEffect(() => {
+    window.addEventListener('online', flushQueue)
+    
+    // Check initial queue on load
+    initDB().then(db => db.getAll('sync_queue')).then(items => {
+      setPendingSyncCount(items.length)
+      if (navigator.onLine && items.length > 0) flushQueue()
+    })
+
+    return () => window.removeEventListener('online', flushQueue)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   // Stats
   const jobsRemaining = jobs.filter(j => j.status !== 'Complete' && j.status !== 'Paid').length
   const unpaidTotal = jobs.filter(j => j.status === 'Complete').reduce((acc, j) => acc + (j.invoice_amount_cents || 0), 0)
 
-  const advanceStatus = (jobId: string, currentStatus: JobStatus) => {
+  const advanceStatus = async (jobId: string, currentStatus: JobStatus) => {
     const currentIndex = STATUS_ORDER.indexOf(currentStatus)
     if (currentIndex < STATUS_ORDER.length - 1) {
       const nextStatus = STATUS_ORDER[currentIndex + 1]
-      // Optimistic update
+      
+      // 1. Optimistic update
       setJobs(jobs.map(j => j.id === jobId ? { ...j, status: nextStatus } : j))
+      
+      // 2. Queue local mutation
+      const db = await initDB()
+      await db.add('sync_queue', {
+        type: 'job_status_change',
+        payload: { jobId, status: nextStatus },
+        created_at: Date.now()
+      })
+      
+      setPendingSyncCount(prev => prev + 1)
+
+      // 3. Attempt to flush immediately if online
+      flushQueue()
     }
   }
 
@@ -66,7 +110,14 @@ export function JobBoard() {
       {/* Sticky Header / Summary Strip */}
       <div className="sticky top-0 z-10 bg-white border-b border-gray-200 px-4 py-3 shadow-sm flex justify-between items-center">
         <div>
-          <h1 className="text-xl font-bold text-gray-900">Today&apos;s Jobs</h1>
+          <h1 className="text-xl font-bold text-gray-900 flex items-center">
+            Today&apos;s Jobs
+            {pendingSyncCount > 0 && (
+              <span className="ml-2 inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-600 border border-amber-200 animate-pulse">
+                {pendingSyncCount} syncing
+              </span>
+            )}
+          </h1>
           <p className="text-sm text-gray-500 font-medium">{jobsRemaining} remaining</p>
         </div>
         <div className="text-right">
@@ -77,6 +128,9 @@ export function JobBoard() {
 
       {/* Job List */}
       <div className="p-4 space-y-4 pb-24">
+        {jobs.length === 0 && (
+          <div className="text-center py-10 text-gray-500">No jobs found for today.</div>
+        )}
         {jobs.map(job => (
           <div key={job.id} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
             {/* Job Header (Always visible) */}

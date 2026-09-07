@@ -4,15 +4,12 @@ import { Customer } from '@/types'
 import { Search, Phone, MapPin, ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
 
-const DUMMY_CUSTOMERS: Customer[] = [
-  { id: 'c1', name: 'John Doe', phone: '555-0101', address: '123 Main St, Springfield', balance_cents: 0 },
-  { id: 'c2', name: 'Jane Smith', phone: '555-0102', address: '456 Elm St, Springfield', balance_cents: 15000 },
-  { id: 'c3', name: 'Bob Johnson', phone: '555-0103', address: '789 Oak Ave, Springfield', balance_cents: 45000 },
-]
-
-export function CustomerList() {
+export function CustomerList({ initialCustomers }: { initialCustomers: Customer[] }) {
   const [search, setSearch] = useState('')
-  const filtered = DUMMY_CUSTOMERS.filter(c => c.name.toLowerCase().includes(search.toLowerCase()) || c.address.toLowerCase().includes(search.toLowerCase()))
+  const filtered = initialCustomers.filter(c => 
+    c.name.toLowerCase().includes(search.toLowerCase()) || 
+    (c.address && c.address.toLowerCase().includes(search.toLowerCase()))
+  )
 
   return (
     <div className="flex flex-col h-full max-w-md mx-auto bg-gray-100 min-h-screen">
@@ -56,6 +53,9 @@ export function CustomerList() {
             </div>
           </Link>
         ))}
+        {filtered.length === 0 && (
+          <div className="text-center py-10 text-gray-500">No customers found.</div>
+        )}
       </div>
     </div>
   )

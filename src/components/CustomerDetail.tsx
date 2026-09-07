@@ -4,24 +4,17 @@ import { Customer } from '@/types'
 import { ArrowLeft, MapPin, Phone, Calendar, Banknote } from 'lucide-react'
 import Link from 'next/link'
 
-const DUMMY_CUSTOMERS: Customer[] = [
-  { id: 'c1', name: 'John Doe', phone: '555-0101', address: '123 Main St, Springfield', balance_cents: 0 },
-  { id: 'c2', name: 'Jane Smith', phone: '555-0102', address: '456 Elm St, Springfield', balance_cents: 15000 },
-  { id: 'c3', name: 'Bob Johnson', phone: '555-0103', address: '789 Oak Ave, Springfield', balance_cents: 45000 },
-]
+interface JobHistoryItem {
+  id: string;
+  service_type: string;
+  scheduled_date: string;
+  status: string;
+  notes: string;
+  invoice_amount_cents?: number;
+  invoice_status?: string;
+}
 
-export function CustomerDetail({ customerId }: { customerId: string }) {
-  const customer = DUMMY_CUSTOMERS.find(c => c.id === customerId)
-  
-  if (!customer) {
-    return (
-      <div className="flex flex-col h-full max-w-md mx-auto bg-gray-100 min-h-screen p-4 items-center justify-center">
-        <h2 className="text-xl font-bold text-gray-900 mb-4">Customer not found</h2>
-        <Link href="/customers" className="text-blue-600 font-bold">Go back</Link>
-      </div>
-    )
-  }
-
+export function CustomerDetail({ customer, jobHistory }: { customer: Customer, jobHistory: JobHistoryItem[] }) {
   return (
     <div className="flex flex-col h-full max-w-md mx-auto bg-gray-100 min-h-screen">
       <div className="sticky top-0 z-10 bg-white border-b border-gray-200 px-4 py-3 shadow-sm flex items-center">
@@ -71,28 +64,35 @@ export function CustomerDetail({ customerId }: { customerId: string }) {
             </h3>
           </div>
           <div className="divide-y divide-gray-100">
-            {/* Dummy History Items */}
-            <div className="p-4 active:bg-gray-50">
-              <div className="flex justify-between mb-1">
-                <span className="font-bold text-gray-900">HVAC Repair</span>
-                <span className="text-gray-500 text-sm font-medium">Oct 12, 2023</span>
+            {jobHistory.length === 0 && (
+              <div className="p-4 text-center text-gray-500">No job history</div>
+            )}
+            {jobHistory.map(job => (
+              <div key={job.id} className="p-4 active:bg-gray-50">
+                <div className="flex justify-between mb-1">
+                  <span className="font-bold text-gray-900">{job.service_type}</span>
+                  <span className="text-gray-500 text-sm font-medium">
+                    {new Date(job.scheduled_date).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}
+                  </span>
+                </div>
+                <p className="text-[15px] text-gray-600 mb-3">{job.notes}</p>
+                <div className="flex space-x-2">
+                   {job.invoice_amount_cents && job.invoice_status === 'Paid' && (
+                     <span className="inline-flex items-center rounded-lg bg-green-50 border border-green-100 px-2.5 py-1 text-xs font-bold text-green-700">
+                       Paid ${(job.invoice_amount_cents / 100).toFixed(2)}
+                     </span>
+                   )}
+                   {job.invoice_amount_cents && job.invoice_status === 'Unpaid' && (
+                     <span className="inline-flex items-center rounded-lg bg-amber-50 border border-amber-100 px-2.5 py-1 text-xs font-bold text-amber-700">
+                       Owes ${(job.invoice_amount_cents / 100).toFixed(2)}
+                     </span>
+                   )}
+                   <span className="inline-flex items-center rounded-lg bg-gray-50 border border-gray-200 px-2.5 py-1 text-xs font-bold text-gray-700">
+                     {job.status}
+                   </span>
+                </div>
               </div>
-              <p className="text-[15px] text-gray-600 mb-3">Replaced contactor on AC unit. Tested cooling cycle.</p>
-              <div className="flex space-x-2">
-                 <span className="inline-flex items-center rounded-lg bg-green-50 border border-green-100 px-2.5 py-1 text-xs font-bold text-green-700">Paid $250.00</span>
-                 <span className="inline-flex items-center rounded-lg bg-blue-50 border border-blue-100 px-2.5 py-1 text-xs font-bold text-blue-700 text-center px-3">2 Photos</span>
-              </div>
-            </div>
-            <div className="p-4 active:bg-gray-50">
-              <div className="flex justify-between mb-1">
-                <span className="font-bold text-gray-900">Annual Maintenance</span>
-                <span className="text-gray-500 text-sm font-medium">Apr 04, 2023</span>
-              </div>
-              <p className="text-[15px] text-gray-600 mb-3">Filter change and system tune-up.</p>
-              <div className="flex space-x-2">
-                 <span className="inline-flex items-center rounded-lg bg-green-50 border border-green-100 px-2.5 py-1 text-xs font-bold text-green-700">Paid $95.00</span>
-              </div>
-            </div>
+            ))}
           </div>
         </div>
       </div>
