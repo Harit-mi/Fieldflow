@@ -102,102 +102,100 @@ export function InvoiceView({
   }
 
   return (
-    <div className="flex flex-col h-full max-w-md mx-auto bg-white min-h-screen">
+    <div className="flex flex-col h-full max-w-md mx-auto bg-gray-50 min-h-screen relative pb-40">
       {/* Header */}
-      <div className="flex items-center p-4 border-b border-gray-100">
-        <Link href="/" className="p-2 -ml-2 text-gray-500 active:text-gray-900">
-          <ArrowLeft className="w-6 h-6" />
+      <div className="flex items-center p-4 bg-gray-900 text-white shadow-md">
+        <Link href="/" className="p-3 -ml-3 text-gray-300 active:text-white rounded-lg">
+          <ArrowLeft className="w-8 h-8" />
         </Link>
-        <h1 className="text-lg font-bold ml-2">Invoice #INV-{jobId.substring(0, 3).toUpperCase()}</h1>
+        <h1 className="text-xl font-black uppercase tracking-widest ml-2">INV-{jobId.substring(0, 4)}</h1>
       </div>
 
       {/* Massive Total (The focal point) */}
-      <div className="py-10 text-center bg-gray-50 border-b border-gray-100">
-        <p className="text-sm font-bold text-gray-500 uppercase tracking-widest mb-2">Total Due</p>
-        <h2 className="text-6xl font-black text-gray-900 tracking-tight">
-          <span className="text-3xl align-super mr-1 text-gray-400">$</span>
-          {(invoice.totalCents / 100).toFixed(2)}
+      <div className="py-12 px-4 text-center bg-white border-b-4 border-gray-200">
+        <p className="text-sm font-black text-gray-400 uppercase tracking-widest mb-1">TOTAL DUE</p>
+        <h2 className="text-[5rem] font-black text-gray-900 leading-none tracking-tighter">
+          <span className="text-4xl align-super text-gray-300 mr-1">$</span>
+          {(invoice.totalCents / 100).toFixed(0)}
+          <span className="text-3xl text-gray-300">.{(invoice.totalCents % 100).toString().padStart(2, '0')}</span>
         </h2>
       </div>
 
       {/* Line Items */}
-      <div className="p-6">
-        <div className="space-y-4 mb-8">
+      <div className="p-4 bg-white mt-4 border-y-2 border-gray-200">
+        <div className="space-y-4 mb-2">
           {initialLineItems.map(item => (
-            <div key={item.id} className="flex justify-between items-start">
+            <div key={item.id} className="flex justify-between items-start text-lg">
               <div>
-                <p className="font-semibold text-gray-900">{item.description}</p>
-                <p className="text-sm text-gray-500">
+                <p className="font-black text-gray-900 uppercase tracking-tight">{item.description}</p>
+                <p className="font-bold text-gray-400">
                   {item.quantity} x ${(item.amountCents / 100).toFixed(2)}
                 </p>
               </div>
-              <p className="font-semibold text-gray-900">
+              <p className="font-black text-gray-900">
                 ${((item.amountCents * item.quantity) / 100).toFixed(2)}
               </p>
             </div>
           ))}
           
-          <div className="border-t border-gray-200 pt-4 mt-6">
-            <div className="flex justify-between text-gray-500 mb-2">
-              <span>Subtotal</span>
+          <div className="border-t-2 border-dashed border-gray-200 pt-4 mt-4 text-lg font-bold text-gray-500 space-y-1">
+            <div className="flex justify-between">
+              <span className="uppercase tracking-widest">SUBTOTAL</span>
               <span>${(invoice.subtotalCents / 100).toFixed(2)}</span>
             </div>
-            <div className="flex justify-between text-gray-500 mb-2">
-              <span>Tax (8.5%)</span>
+            <div className="flex justify-between">
+              <span className="uppercase tracking-widest">TAX (8.5%)</span>
               <span>${(invoice.taxCents / 100).toFixed(2)}</span>
-            </div>
-            <div className="flex justify-between font-bold text-gray-900 text-lg mt-4">
-              <span>Total</span>
-              <span>${(invoice.totalCents / 100).toFixed(2)}</span>
             </div>
           </div>
         </div>
+      </div>
 
+      {/* Fixed Bottom Action Area */}
+      <div className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white border-t-4 border-gray-200 p-4 shadow-[0_-10px_20px_rgba(0,0,0,0.1)] z-50">
         {/* Payment Methods */}
-        <div className="mb-8">
-          <h3 className="font-bold text-gray-900 mb-3">Payment Method</h3>
-          <div className="grid grid-cols-3 gap-3">
-            <button
-              onClick={() => setPaymentMethod('card')}
-              className={`flex flex-col items-center justify-center p-4 rounded-xl border-2 transition-colors ${
-                paymentMethod === 'card' ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-gray-200 text-gray-600 active:bg-gray-50'
-              }`}
-            >
-              <CreditCard className="w-6 h-6 mb-2" />
-              <span className="text-sm font-semibold">Card</span>
-            </button>
-            <button
-              onClick={() => setPaymentMethod('cash')}
-              className={`flex flex-col items-center justify-center p-4 rounded-xl border-2 transition-colors ${
-                paymentMethod === 'cash' ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-gray-200 text-gray-600 active:bg-gray-50'
-              }`}
-            >
-              <Banknote className="w-6 h-6 mb-2" />
-              <span className="text-sm font-semibold">Cash</span>
-            </button>
-            <button
-              onClick={() => setPaymentMethod('tab')}
-              className={`flex flex-col items-center justify-center p-4 rounded-xl border-2 transition-colors ${
-                paymentMethod === 'tab' ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-gray-200 text-gray-600 active:bg-gray-50'
-              }`}
-            >
-              <UserPlus className="w-6 h-6 mb-2" />
-              <span className="text-sm font-semibold">Tab</span>
-            </button>
-          </div>
+        <div className="flex space-x-2 mb-3">
+          <button
+            onClick={() => setPaymentMethod('card')}
+            className={`flex-1 flex flex-col items-center justify-center min-h-[72px] border-2 transition-colors ${
+              paymentMethod === 'card' ? 'border-blue-600 bg-blue-100 text-blue-800' : 'border-gray-300 bg-gray-50 text-gray-500 active:bg-gray-100'
+            }`}
+          >
+            <CreditCard className="w-8 h-8 mb-1" />
+            <span className="text-xs font-black uppercase tracking-widest">CARD</span>
+          </button>
+          <button
+            onClick={() => setPaymentMethod('cash')}
+            className={`flex-1 flex flex-col items-center justify-center min-h-[72px] border-2 transition-colors ${
+              paymentMethod === 'cash' ? 'border-green-600 bg-green-100 text-green-800' : 'border-gray-300 bg-gray-50 text-gray-500 active:bg-gray-100'
+            }`}
+          >
+            <Banknote className="w-8 h-8 mb-1" />
+            <span className="text-xs font-black uppercase tracking-widest">CASH</span>
+          </button>
+          <button
+            onClick={() => setPaymentMethod('tab')}
+            className={`flex-1 flex flex-col items-center justify-center min-h-[72px] border-2 transition-colors ${
+              paymentMethod === 'tab' ? 'border-purple-600 bg-purple-100 text-purple-800' : 'border-gray-300 bg-gray-50 text-gray-500 active:bg-gray-100'
+            }`}
+          >
+            <UserPlus className="w-8 h-8 mb-1" />
+            <span className="text-xs font-black uppercase tracking-widest">TAB</span>
+          </button>
         </div>
 
         {/* Pay Button */}
         <button
           onClick={handlePay}
           disabled={!paymentMethod}
-          className={`w-full py-5 rounded-xl font-black text-xl flex items-center justify-center transition-all ${
-            paymentMethod 
-              ? 'bg-blue-600 text-white active:bg-blue-700 shadow-lg shadow-blue-200 transform active:scale-[0.98]' 
-              : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+          className={`w-full min-h-[80px] font-black text-2xl flex items-center justify-center uppercase tracking-widest transition-all ${
+            paymentMethod === 'card' ? 'bg-blue-600 text-white active:bg-blue-700' :
+            paymentMethod === 'cash' ? 'bg-green-600 text-white active:bg-green-700' :
+            paymentMethod === 'tab' ? 'bg-purple-600 text-white active:bg-purple-700' :
+            'bg-gray-200 text-gray-400 cursor-not-allowed'
           }`}
         >
-          {paymentMethod ? `Collect $${(invoice.totalCents / 100).toFixed(2)}` : 'Select Payment Method'}
+          {paymentMethod ? `COLLECT $${(invoice.totalCents / 100).toFixed(2)}` : 'SELECT PAYMENT'}
         </button>
       </div>
     </div>

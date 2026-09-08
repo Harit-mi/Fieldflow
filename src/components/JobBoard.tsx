@@ -5,12 +5,12 @@ import { Job, JobStatus } from '@/types'
 import { MapPin, Phone, Clock, CheckCircle } from 'lucide-react'
 import { createClient } from '@/utils/supabase/client'
 import { openDB } from 'idb'
+import Link from 'next/link'
 
 const STATUS_ORDER: JobStatus[] = ['Scheduled', 'En Route', 'In Progress', 'Complete', 'Paid']
 
 export function JobBoard({ initialJobs }: { initialJobs: Job[] }) {
   const [jobs, setJobs] = useState<Job[]>(initialJobs)
-  const [expandedJobId, setExpandedJobId] = useState<string | null>(null)
   const [pendingSyncCount, setPendingSyncCount] = useState(0)
   const supabase = createClient()
 
@@ -106,112 +106,95 @@ export function JobBoard({ initialJobs }: { initialJobs: Job[] }) {
   }
 
   return (
-    <div className="flex flex-col h-full max-w-md mx-auto bg-gray-100 min-h-screen">
-      {/* Sticky Header / Summary Strip */}
-      <div className="sticky top-0 z-10 bg-white border-b border-gray-200 px-4 py-3 shadow-sm flex justify-between items-center">
+    <div className="flex flex-col h-full max-w-md mx-auto bg-gray-50 min-h-screen">
+      {/* Massive Summary Strip */}
+      <div className="sticky top-0 z-10 bg-white border-b-4 border-gray-900 px-4 py-4 shadow-md flex justify-between items-end">
         <div>
-          <h1 className="text-xl font-bold text-gray-900 flex items-center">
-            Today&apos;s Jobs
-            {pendingSyncCount > 0 && (
-              <span className="ml-2 inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-600 border border-amber-200 animate-pulse">
-                {pendingSyncCount} syncing
-              </span>
-            )}
+          <h1 className="text-2xl font-black text-gray-900 flex items-center leading-none">
+            TODAY
           </h1>
-          <p className="text-sm text-gray-500 font-medium">{jobsRemaining} remaining</p>
+          <p className="text-gray-500 font-bold mt-1 uppercase tracking-widest text-xs">{jobsRemaining} JOBS LEFT</p>
+          {pendingSyncCount > 0 && (
+            <span className="mt-2 inline-flex items-center bg-amber-200 px-3 py-1 text-xs font-black text-amber-900 animate-pulse">
+              {pendingSyncCount} OFFLINE EDITS
+            </span>
+          )}
         </div>
         <div className="text-right">
-          <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Unpaid</p>
-          <p className="text-lg font-bold text-gray-900">${(unpaidTotal / 100).toFixed(2)}</p>
+          <p className="text-xs text-gray-500 font-black uppercase tracking-widest mb-1">UNPAID</p>
+          <p className="text-4xl font-black text-red-600 leading-none tracking-tighter">${(unpaidTotal / 100).toFixed(0)}</p>
         </div>
       </div>
 
-      {/* Job List */}
-      <div className="p-4 space-y-4 pb-24">
+      {/* Heavy-Duty Job List */}
+      <div className="p-3 space-y-5 pb-28">
         {jobs.length === 0 && (
-          <div className="text-center py-10 text-gray-500">No jobs found for today.</div>
+          <div className="text-center py-20 text-gray-500 font-bold text-xl uppercase tracking-widest">No jobs today</div>
         )}
         {jobs.map(job => (
-          <div key={job.id} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-            {/* Job Header (Always visible) */}
-            <div 
-              className="p-4 active:bg-gray-50 transition-colors cursor-pointer"
-              onClick={() => setExpandedJobId(expandedJobId === job.id ? null : job.id)}
-            >
-              <div className="flex justify-between items-start mb-2">
-                <h2 className="text-xl font-bold text-gray-900 leading-tight">{job.customer.name}</h2>
-                <div className="flex items-center text-gray-500 text-sm font-medium whitespace-nowrap ml-2">
-                  <Clock className="w-4 h-4 mr-1" />
+          <div key={job.id} className="bg-white shadow-sm border-2 border-gray-200 overflow-hidden">
+            {/* Header */}
+            <div className="p-4 bg-gray-900 text-white flex justify-between items-start">
+              <div>
+                <h2 className="text-2xl font-black uppercase tracking-tight">{job.customer.name}</h2>
+                <div className="flex items-center text-gray-300 font-bold mt-1 text-sm uppercase tracking-wider">
+                  <Clock className="w-4 h-4 mr-1.5" />
                   {new Date(job.scheduled_date).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
-                </div>
-              </div>
-              
-              <div className="flex items-start text-gray-600 mb-4">
-                <MapPin className="w-5 h-5 mr-2 shrink-0 text-blue-500 mt-0.5" />
-                <a 
-                  href={`maps://?q=${encodeURIComponent(job.customer.address)}`} 
-                  onClick={(e) => e.stopPropagation()}
-                  className="text-[15px] leading-snug active:text-blue-700"
-                >
-                  {job.customer.address}
-                </a>
-              </div>
-
-              <div className="flex justify-between items-center">
-                <span className="inline-flex items-center rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700 border border-blue-100">
+                  <span className="mx-2">•</span>
                   {job.service_type}
-                </span>
-                
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    advanceStatus(job.id, job.status)
-                  }}
-                  className={`
-                    min-h-[48px] px-5 rounded-lg font-bold text-sm min-w-[140px] transition-colors flex items-center justify-center
-                    ${job.status === 'Paid' ? 'bg-green-100 text-green-800' : 
-                      job.status === 'Complete' ? 'bg-green-600 text-white active:bg-green-700' :
-                      'bg-gray-900 text-white active:bg-gray-800'}
-                  `}
-                  disabled={job.status === 'Paid'}
-                >
-                  {job.status === 'Paid' ? (
-                    <><CheckCircle className="w-4 h-4 mr-1.5"/> Paid</>
-                  ) : job.status === 'Complete' ? (
-                    'Mark Paid'
-                  ) : (
-                    `Mark ${STATUS_ORDER[STATUS_ORDER.indexOf(job.status) + 1]}`
-                  )}
-                </button>
+                </div>
               </div>
             </div>
-
-            {/* Expanded Content */}
-            {expandedJobId === job.id && (
-              <div className="border-t border-gray-100 p-4 bg-gray-50/50">
-                <div className="mb-5">
-                  <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">Notes</h3>
-                  <p className="text-[15px] text-gray-800 leading-relaxed">{job.notes}</p>
+              
+            {/* Main Content Area */}
+            <div className="p-4 border-b-2 border-gray-100">
+              <a 
+                href={`maps://?q=${encodeURIComponent(job.customer.address)}`} 
+                className="flex items-center min-h-[64px] text-lg font-bold text-gray-800 active:bg-gray-100 p-2 -mx-2 rounded-lg"
+              >
+                <MapPin className="w-8 h-8 mr-3 shrink-0 text-blue-600" />
+                <span className="leading-tight">{job.customer.address}</span>
+              </a>
+              
+              {job.notes && (
+                <div className="mt-3 bg-yellow-50 border-l-4 border-yellow-400 p-3">
+                  <p className="text-sm font-bold text-yellow-900 uppercase tracking-widest mb-1">NOTES</p>
+                  <p className="text-lg text-yellow-900 font-medium leading-tight">{job.notes}</p>
                 </div>
-                
-                <div className="flex space-x-3">
+              )}
+            </div>
+
+            {/* Massive Action Buttons */}
+            <div className="p-2 space-y-2 bg-gray-50">
+              {job.status === 'Complete' ? (
+                <Link 
+                  href={`/invoices/${job.id}`}
+                  className="w-full flex items-center justify-center bg-blue-600 min-h-[80px] font-black text-2xl text-white uppercase tracking-tight active:bg-blue-700 rounded-none shadow-sm"
+                >
+                  COLLECT PAYMENT
+                </Link>
+              ) : job.status === 'Paid' ? (
+                 <div className="w-full flex items-center justify-center bg-green-100 min-h-[80px] font-black text-2xl text-green-800 uppercase tracking-tight border-2 border-green-200">
+                  <CheckCircle className="w-8 h-8 mr-2"/> FULLY PAID
+                </div>
+              ) : (
+                <div className="flex space-x-2">
                   <a 
                     href={`tel:${job.customer.phone}`}
-                    className="flex-1 flex items-center justify-center bg-white border border-gray-300 rounded-xl min-h-[48px] font-semibold text-gray-700 active:bg-gray-50"
+                    className="flex-1 flex items-center justify-center bg-white border-2 border-gray-300 min-h-[80px] font-black text-lg text-gray-700 uppercase tracking-widest active:bg-gray-100"
                   >
-                    <Phone className="w-5 h-5 mr-2 text-gray-500" />
-                    Call
+                    <Phone className="w-6 h-6 mr-2 text-gray-500" />
+                    CALL
                   </a>
-                  {job.status === 'Complete' && (
-                    <a href={`/invoices/${job.id}`}
-                      className="flex-1 flex items-center justify-center bg-blue-600 rounded-xl min-h-[48px] font-bold text-white active:bg-blue-700"
-                    >
-                      Collect Payment
-                    </a>
-                  )}
+                  <button
+                    onClick={() => advanceStatus(job.id, job.status)}
+                    className="flex-[2] flex items-center justify-center bg-gray-900 min-h-[80px] font-black text-xl text-white uppercase tracking-tight active:bg-gray-800 shadow-sm"
+                  >
+                    {job.status === 'Scheduled' ? 'START JOB' : 'FINISH JOB'}
+                  </button>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         ))}
       </div>
