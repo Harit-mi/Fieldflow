@@ -25,85 +25,84 @@ const MOCK_JOBS: Job[] = [
 ]
 
 export default async function Home() {
+  // 1. Check for missing environment variables first
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    return (
+      <main className="min-h-screen bg-gray-100 relative">
+        <div className="bg-amber-100 border-b border-amber-200 text-amber-800 px-4 py-2 text-sm text-center font-medium z-50 relative">
+          Running in offline mode: Missing Supabase environment variables. Showing mock data.
+        </div>
+        <JobBoard initialJobs={MOCK_JOBS} />
+      </main>
+    )
+  }
+
+  // 2. Initialize Supabase (calls cookies(), which can throw DynamicServerError in build)
+  // We do NOT wrap this in try/catch to avoid swallowing Next.js internal routing/build errors.
+  const supabase = await createClient()
+  
+  // 3. Auth Verification
+  const { data: { user } } = await supabase.auth.getUser()
+  
+  if (!user) {
+    // redirect() throws NEXT_REDIRECT. Must not be caught.
+    redirect('/login')
+  }
+
   let isOfflineMode = false;
   let formattedJobs: Job[] = MOCK_JOBS;
   let errorMessage = '';
-  let shouldRedirect = false;
 
+  // 4. Fetch jobs (This is safe to try/catch because it's just a fetch)
   try {
-    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-      throw new Error('Missing Supabase environment variables');
-    }
-
-    const supabase = await createClient()
-    
-    // Auth Verification
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    
-    if (authError) throw authError;
-
-    if (!user) {
-      shouldRedirect = true;
-    } else {
-      // Fetch jobs for today and future
-      const { data: jobs, error: dbError } = await supabase
-        .from('jobs')
-        .select(`
+    const { data: jobs, error: dbError } = await supabase
+      .from('jobs')
+      .select(`
+        id,
+        scheduled_date,
+        status,
+        service_type,
+        notes,
+        customers (
           id,
-          scheduled_date,
-          status,
-          service_type,
-          notes,
-          customers (
-            id,
-            name,
-            phone,
-            address
-          ),
-          invoices (
-            amount_cents
-          )
-        `)
-        .order('scheduled_date', { ascending: true })
+          name,
+          phone,
+          address
+        ),
+        invoices (
+          amount_cents
+        )
+      `)
+      .order('scheduled_date', { ascending: true })
 
-      if (dbError) throw dbError;
+    if (dbError) throw dbError;
 
-      formattedJobs = (jobs || []).map(job => {
-        const customer = Array.isArray(job.customers) ? job.customers[0] : job.customers
-        const invoices = Array.isArray(job.invoices) ? job.invoices : (job.invoices ? [job.invoices] : [])
-        const invoice_amount_cents = invoices.reduce((acc: number, inv: { amount_cents: number }) => acc + inv.amount_cents, 0)
+    formattedJobs = (jobs || []).map(job => {
+      const customer = Array.isArray(job.customers) ? job.customers[0] : job.customers
+      const invoices = Array.isArray(job.invoices) ? job.invoices : (job.invoices ? [job.invoices] : [])
+      const invoice_amount_cents = invoices.reduce((acc: number, inv: { amount_cents: number }) => acc + inv.amount_cents, 0)
 
-        return {
-          id: job.id,
-          customer: {
-            id: customer?.id || 'unknown',
-            name: customer?.name || 'Unknown',
-            phone: customer?.phone || '',
-            address: customer?.address || '',
-            balance_cents: 0
-          },
-          scheduled_date: job.scheduled_date,
-          status: job.status as Job['status'],
-          service_type: job.service_type,
-          notes: job.notes,
-          invoice_amount_cents
-        }
-      })
-    }
+      return {
+        id: job.id,
+        customer: {
+          id: customer?.id || 'unknown',
+          name: customer?.name || 'Unknown',
+          phone: customer?.phone || '',
+          address: customer?.address || '',
+          balance_cents: 0
+        },
+        scheduled_date: job.scheduled_date,
+        status: job.status as Job['status'],
+        service_type: job.service_type,
+        notes: job.notes,
+        invoice_amount_cents
+      }
+    })
   } catch (error: unknown) {
-    // DO NOT catch Next.js internal errors (like DynamicServerError)
-    if (typeof error === 'object' && error !== null && 'digest' in error && error.digest === 'DYNAMIC_SERVER_USAGE') {
-      throw error;
-    }
     const message = error instanceof Error ? error.message : 'Unknown database error';
     console.error('Server Data Fetch Error:', message);
     isOfflineMode = true;
     errorMessage = message;
-  }
-
-  // We handle redirect outside the try/catch so Next.js NEXT_REDIRECT error isn't swallowed
-  if (shouldRedirect) {
-    redirect('/login')
   }
 
   return (
