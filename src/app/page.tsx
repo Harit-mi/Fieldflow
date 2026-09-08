@@ -7,7 +7,7 @@ const MOCK_JOBS = [
     id: 'mock-1',
     customer: { id: 'c1', name: 'Alice Smith', phone: '555-0101', address: '123 Main St', balance_cents: 0 },
     scheduled_date: new Date().toISOString(),
-    status: 'scheduled',
+    status: 'scheduled' as any,
     service_type: 'Installation',
     notes: 'Please call before arriving.',
     invoice_amount_cents: 15000,
@@ -16,7 +16,7 @@ const MOCK_JOBS = [
     id: 'mock-2',
     customer: { id: 'c2', name: 'Bob Jones', phone: '555-0202', address: '456 Elm St', balance_cents: 0 },
     scheduled_date: new Date(Date.now() + 86400000).toISOString(),
-    status: 'in_progress',
+    status: 'in_progress' as any,
     service_type: 'Maintenance',
     notes: 'Quarterly checkup.',
     invoice_amount_cents: 8500,
@@ -82,7 +82,7 @@ export default async function Home() {
             balance_cents: 0
           },
           scheduled_date: job.scheduled_date,
-          status: job.status,
+          status: job.status as any,
           service_type: job.service_type,
           notes: job.notes,
           invoice_amount_cents
