@@ -91,6 +91,10 @@ export default async function Home() {
       })
     }
   } catch (error: unknown) {
+    // DO NOT catch Next.js internal errors (like DynamicServerError)
+    if (typeof error === 'object' && error !== null && 'digest' in error && error.digest === 'DYNAMIC_SERVER_USAGE') {
+      throw error;
+    }
     const message = error instanceof Error ? error.message : 'Unknown database error';
     console.error('Server Data Fetch Error:', message);
     isOfflineMode = true;
