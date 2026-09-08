@@ -1,13 +1,14 @@
 import { JobBoard } from '@/components/JobBoard'
 import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
+import { Job } from '@/types'
 
-const MOCK_JOBS = [
+const MOCK_JOBS: Job[] = [
   {
     id: 'mock-1',
     customer: { id: 'c1', name: 'Alice Smith', phone: '555-0101', address: '123 Main St', balance_cents: 0 },
     scheduled_date: new Date().toISOString(),
-    status: 'scheduled' as any,
+    status: 'Scheduled',
     service_type: 'Installation',
     notes: 'Please call before arriving.',
     invoice_amount_cents: 15000,
@@ -16,7 +17,7 @@ const MOCK_JOBS = [
     id: 'mock-2',
     customer: { id: 'c2', name: 'Bob Jones', phone: '555-0202', address: '456 Elm St', balance_cents: 0 },
     scheduled_date: new Date(Date.now() + 86400000).toISOString(),
-    status: 'in_progress' as any,
+    status: 'In Progress',
     service_type: 'Maintenance',
     notes: 'Quarterly checkup.',
     invoice_amount_cents: 8500,
@@ -25,7 +26,7 @@ const MOCK_JOBS = [
 
 export default async function Home() {
   let isOfflineMode = false;
-  let formattedJobs = MOCK_JOBS;
+  let formattedJobs: Job[] = MOCK_JOBS;
   let errorMessage = '';
   let shouldRedirect = false;
 
@@ -82,17 +83,18 @@ export default async function Home() {
             balance_cents: 0
           },
           scheduled_date: job.scheduled_date,
-          status: job.status as any,
+          status: job.status as Job['status'],
           service_type: job.service_type,
           notes: job.notes,
           invoice_amount_cents
         }
       })
     }
-  } catch (error: any) {
-    console.error('Server Data Fetch Error:', error.message || error);
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Unknown database error';
+    console.error('Server Data Fetch Error:', message);
     isOfflineMode = true;
-    errorMessage = error.message || 'Unknown database error';
+    errorMessage = message;
   }
 
   // We handle redirect outside the try/catch so Next.js NEXT_REDIRECT error isn't swallowed
