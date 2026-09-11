@@ -30,20 +30,20 @@ export default async function LoginPage() {
   }
 
   return (
-    <div className="flex flex-col items-center justify-center h-screen bg-gray-100">
-      <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-200 w-full max-w-sm">
-        <h1 className="text-2xl font-black text-gray-900 mb-6 text-center">FieldFlow Login</h1>
-        <form action={handleLogin} className="space-y-4">
+    <div className="flex flex-col items-center justify-center h-screen bg-gray-50 px-4">
+      <div className="bg-white p-6 border-4 border-gray-900 shadow-[8px_8px_0_0_rgba(17,24,39,1)] w-full max-w-sm">
+        <h1 className="text-4xl font-black text-gray-900 mb-8 text-center uppercase tracking-tighter">FIELDFLOW</h1>
+        <form action={handleLogin} className="space-y-6">
           <div>
-            <label className="block text-sm font-bold text-gray-700 mb-1">Email</label>
-            <input name="email" type="email" defaultValue="owner@fieldflow.com" className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required />
+            <label className="block text-sm font-black text-gray-900 uppercase tracking-widest mb-2">EMAIL</label>
+            <input name="email" type="email" defaultValue="owner@fieldflow.com" className="w-full px-4 py-4 bg-gray-100 border-2 border-gray-300 rounded-none focus:outline-none focus:border-gray-900 text-lg font-bold transition-colors" required />
           </div>
           <div>
-            <label className="block text-sm font-bold text-gray-700 mb-1">Password</label>
-            <input name="password" type="password" defaultValue="password123" className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required />
+            <label className="block text-sm font-black text-gray-900 uppercase tracking-widest mb-2">PASSWORD</label>
+            <input name="password" type="password" defaultValue="password123" className="w-full px-4 py-4 bg-gray-100 border-2 border-gray-300 rounded-none focus:outline-none focus:border-gray-900 text-lg font-bold transition-colors" required />
           </div>
-          <button type="submit" className="w-full bg-blue-600 text-white rounded-lg py-3 font-bold active:bg-blue-700 transition-colors">
-            Sign In
+          <button type="submit" className="w-full bg-blue-600 border-4 border-blue-600 text-white rounded-none py-4 text-xl font-black uppercase tracking-widest active:bg-blue-700 active:border-blue-700 active:translate-y-1 transition-all">
+            SIGN IN
           </button>
         </form>
       </div>

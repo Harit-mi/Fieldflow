@@ -6,8 +6,8 @@ import { usePathname } from 'next/navigation'
 export function BottomNav() {
   const pathname = usePathname()
   
-  // Hide on invoice page which is a focused task
-  if (pathname.includes('/invoices/')) return null
+  // Hide on invoice page which is a focused task, and hide on login page
+  if (pathname.includes('/invoices/') || pathname === '/login') return null
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 bg-white border-t-4 border-gray-200 pb-[env(safe-area-inset-bottom,16px)] shadow-[0_-10px_20px_rgba(0,0,0,0.1)] z-50" aria-label="Bottom Navigation">
