@@ -17,6 +17,7 @@
     "idb": "^8.0.3",
     "lucide-react": "^1.41.0",
     "next": "15.5.25",
+    "playwright": "^1.63.0",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "tailwind-merge": "^3.6.0"

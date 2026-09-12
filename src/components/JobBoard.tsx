@@ -11,6 +11,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 const STATUS_ORDER: JobStatus[] = ['Scheduled', 'En Route', 'In Progress', 'Complete', 'Paid']
 
 export function JobBoard({ initialJobs }: { initialJobs: Job[] }) {
+  console.log("JobBoard rendering! initialJobs:", initialJobs)
   const [jobs, setJobs] = useState<Job[]>(initialJobs)
   const [pendingSyncCount, setPendingSyncCount] = useState(0)
   const supabase = createClient()
